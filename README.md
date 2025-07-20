@@ -104,5 +104,5 @@ Integrate form submission and protected routes
 Style with Tailwind or CSS framework
 
 🧑‍💻 Author
-Built by Your Name — open to collaboration & feedback!
+Built by Prince Raval — open to collaboration & feedback!
 

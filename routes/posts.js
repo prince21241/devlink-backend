@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const Connection = require("../models/Connection");
+const Notification = require("../models/Notification");
 
 // @route   GET /api/posts
 // @desc    Get feed posts (public posts + posts from connections)
@@ -389,6 +390,18 @@ router.post("/:id/like", auth, async (req, res) => {
     } else {
       // Like the post
       post.likes.unshift({ user: req.user.id });
+      
+      // Create notification for post author (only when liking, not unliking)
+      if (post.user.toString() !== req.user.id) {
+        const liker = await User.findById(req.user.id);
+        await Notification.createNotification({
+          recipient: post.user,
+          sender: req.user.id,
+          type: "post_like",
+          message: `${liker.name} liked your post`,
+          relatedPost: post._id
+        });
+      }
     }
 
     await post.save();
@@ -432,6 +445,19 @@ router.post("/:id/comment", auth, async (req, res) => {
 
     post.comments.unshift(newComment);
     await post.save();
+
+    // Create notification for post author (only if commenter is not the author)
+    if (post.user.toString() !== req.user.id) {
+      const commenter = await User.findById(req.user.id);
+      await Notification.createNotification({
+        recipient: post.user,
+        sender: req.user.id,
+        type: "post_comment",
+        message: `${commenter.name} commented on your post`,
+        relatedPost: post._id,
+        relatedComment: newComment._id
+      });
+    }
 
     let populatedPost = await Post.findById(post._id)
       .populate("user", ["name", "email"])

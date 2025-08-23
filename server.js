@@ -25,6 +25,8 @@ app.use("/api/connections", require("./routes/connections"));
 app.use("/api/projects", require("./routes/projects"));
 app.use("/api/skills", require("./routes/skills"));
 app.use("/api/upload", require("./routes/upload"));
+app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/search", require("./routes/search"));
 
 // Start the server
 const PORT = process.env.PORT || 5000;

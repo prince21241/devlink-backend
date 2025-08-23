@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const Connection = require("../models/Connection");
 const User = require("../models/User");
 const Profile = require("../models/Profile");
+const Notification = require("../models/Notification");
 
 // @route   POST /api/connections/request
 // @desc    Send a connection request
@@ -43,6 +44,16 @@ router.post("/request", auth, async (req, res) => {
     });
 
     await connection.save();
+
+    // Create notification for recipient
+    const requester = await User.findById(requesterId);
+    await Notification.createNotification({
+      recipient: recipientId,
+      sender: requesterId,
+      type: "connection_request",
+      message: `${requester.name} sent you a connection request`,
+      relatedConnection: connection._id
+    });
 
     // Populate the connection with user details
     const populatedConnection = await Connection.findById(connection._id)
@@ -145,6 +156,16 @@ router.put("/:id/accept", auth, async (req, res) => {
     connection.status = "accepted";
     connection.respondedAt = Date.now();
     await connection.save();
+
+    // Create notification for requester that their request was accepted
+    const recipient = await User.findById(req.user.id);
+    await Notification.createNotification({
+      recipient: connection.requester,
+      sender: req.user.id,
+      type: "connection_accepted",
+      message: `${recipient.name} accepted your connection request`,
+      relatedConnection: connection._id
+    });
 
     const populatedConnection = await Connection.findById(connection._id)
       .populate("requester", ["name", "email"])

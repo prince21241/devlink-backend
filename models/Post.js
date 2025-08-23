@@ -132,17 +132,17 @@ PostSchema.pre('save', function(next) {
 
 // Virtual for like count
 PostSchema.virtual('likeCount').get(function() {
-  return this.likes.length;
+  return this.likes ? this.likes.length : 0;
 });
 
 // Virtual for comment count
 PostSchema.virtual('commentCount').get(function() {
-  return this.comments.length;
+  return this.comments ? this.comments.length : 0;
 });
 
 // Virtual for share count
 PostSchema.virtual('shareCount').get(function() {
-  return this.shares.length;
+  return this.shares ? this.shares.length : 0;
 });
 
 // Include virtuals when converting to JSON

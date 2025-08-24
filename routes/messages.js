@@ -23,6 +23,11 @@ router.get("/conversations", auth, async (req, res) => {
 				);
 				const otherUser = await User.findById(otherUserId).select("name email").lean();
 				const profile = await Profile.findOne({ user: otherUserId }).lean();
+				const unreadCount = await Message.countDocuments({
+					conversation: conv._id,
+					recipient: req.user.id,
+					isRead: false,
+				});
 				return {
 					...conv,
 					otherUser: {
@@ -31,6 +36,7 @@ router.get("/conversations", auth, async (req, res) => {
 						email: otherUser?.email,
 						profilePicture: profile?.profilePicture || null,
 					},
+					unreadCount,
 				};
 			})
 		);
@@ -80,10 +86,19 @@ router.get("/conversations/:id/messages", auth, async (req, res) => {
 		const query = { conversation: req.params.id };
 		if (before) query.createdAt = { $lt: new Date(before) };
 
-		const msgs = await Message.find(query)
+		let msgs = await Message.find(query)
 			.sort({ createdAt: -1 })
 			.limit(parseInt(limit))
 			.lean();
+
+		// Mark unread messages addressed to current user as read
+		const unreadIds = msgs
+			.filter((m) => m.recipient.toString() === req.user.id && !m.isRead)
+			.map((m) => m._id);
+		if (unreadIds.length > 0) {
+			await Message.updateMany({ _id: { $in: unreadIds } }, { $set: { isRead: true } });
+			msgs = msgs.map((m) => (unreadIds.includes(m._id) ? { ...m, isRead: true } : m));
+		}
 
 		res.json(msgs.reverse());
 	} catch (err) {

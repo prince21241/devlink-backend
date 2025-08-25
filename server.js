@@ -1,21 +1,37 @@
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
-
-// Load environment variables FIRST
+const fs = require("fs");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 
-// Connect to MongoDB
+// Ensure persistent uploads dir (works with a Render Disk)
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// DB
 connectDB();
 
-// Middleware
-app.use(express.json());
-app.use(cors());
+// CORS: allow your Vercel site + local dev
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://devlink-frontend-roan.vercel.app"
+];
 
-// Serve static files from uploads directory
-app.use("/uploads", express.static("uploads"));
+app.use(cors({
+  origin: (origin, cb) => (!origin || allowedOrigins.includes(origin)) ? cb(null, true) : cb(new Error("Not allowed by CORS")),
+  credentials: true
+}));
+
+app.use(express.json({ limit: "1mb" }));
+
+// Health check
+app.get("/api/health", (_req, res) => res.status(200).json({ ok: true }));
+
+// Static uploads
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
@@ -29,6 +45,6 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/messages", require("./routes/messages"));
 
-// Start the server
+// Start
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
